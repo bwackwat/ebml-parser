@@ -2,14 +2,22 @@
 #include <cstring>
 #include <cstdlib>
 #include <bitset>
+#include <vector>
+#include <array>
 
 #include <unistd.h>
 
-#define BUFSIZE 8192
+#define BUFSIZE 1000000 //1mb
 
-enum VintState {
-	GET_VINT_WIDTH,
-	GET_VINT_DATA
+enum ebml_element_type {
+	MASTER,
+	UINT,
+	INT,
+	STRING,
+	UTF8,
+	BINARY,
+	FLOAT,
+	DATE
 };
 
 class simple_vint{
@@ -27,6 +35,37 @@ public:
 	}
 };
 
+class ebml_element{
+public:
+	std::string name;
+	std::array<uint8_t, 4> id;
+	enum ebml_element_type type;
+
+	ebml_element(std::string name, std::array<uint8_t, 4> const& id, enum ebml_element_type type)
+	:name(name), id(id), type(type){}
+};
+
+const int SPEC_LEN = 250;
+
+#include "spec.cpp"
+
+ebml_element* get_element(std::array<uint8_t, 4> id, uint8_t level){
+	bool found;
+	for(int i = 0; i < SPEC_LEN; ++i){
+		found = true;
+		for(int j = 0; j < level; ++j){
+			if(ebml_spec[i]->id[j] != id[j]){
+				found = false;
+				break;
+			}
+		}
+		if(found){
+			return ebml_spec[i];
+		}
+	}
+	return 0;
+}
+
 class simple_ebml_element {
 public:
 	simple_vint id;
@@ -42,6 +81,8 @@ int main(int argc, char** argv){
 	int from_bytes = 0;
 	int to_bytes = 0;
 
+	bool verbose = false;
+
 	simple_vint* e_id; 
 	simple_vint* e_size; 
 
@@ -52,6 +93,8 @@ int main(int argc, char** argv){
                         to_bytes = std::stoi(argv[i + 1]);
                 }else if((std::strcmp(argv[i], "-l") == 0) && argc > i){
                         to_bytes = from_bytes + std::stoi(argv[i + 1]);
+                }else if(std::strcmp(argv[i], "-v") == 0){
+                        verbose = true;
                 }
 	}
 
@@ -65,8 +108,13 @@ int main(int argc, char** argv){
 			break;
 		}
 
-		std::bitset<8> sbits(buffer[i]);
-		std::cout << "Element Start: " << sbits << std::endl;
+		if(verbose){
+			std::bitset<8> sbits(buffer[i]);
+			std::cout << "Element Start: " << sbits << std::endl;
+			std::cout << "Element Pos: " << std::dec << i << std::endl;
+		}
+
+		// Get ID VINT
 
 		e_id = new simple_vint();
 		e_id->width = 1;
@@ -77,116 +125,90 @@ int main(int argc, char** argv){
 			mask >>= 1;
 			e_id->width += 1;
 		}
-		std::cout << "Id Vint Width: " << (int)e_id->width << std::endl;
-
-		// Get rid of "vint marker"
-		//buffer[i] = 0;
-		//buffer[i] ^= mask;
-
-		//vint->data[0] = buffer[i];
-		//vint->width = 1;
-		//std::cout << "Value: " << std::dec << vint->get_int() << std::endl;
-
-		std::cout << "Id Vint Bytes: ";
+		if(verbose){
+			std::cout << "Id Vint Width: " << (int)e_id->width << std::endl;
+			std::cout << "Id Vint Bytes: ";
+		}
 		for(int j = 0; j < e_id->width; ++j){
 			e_id->data[j] = buffer[i + j];
-			std::bitset<8> bits(e_id->data[j]);
-			std::cout << bits;
+			if(verbose){
+				std::bitset<8> bits(e_id->data[j]);
+				std::cout << bits;
+			}
 		}
 		i += e_id->width;
-		std::cout << std::endl;
-
-		std::cout << "Id Hex: 0x";
-		for(int j = 0; j < e_id->width; ++j){
-			std::cout << std::hex << (int)e_id->data[j];
+		if(verbose){
+			std::cout << std::endl;
+			std::cout << "Id Hex: 0x";
+			for(int j = 0; j < e_id->width; ++j){
+				std::cout << std::hex << (int)e_id->data[j];
+			}
+			std::cout << std::endl;
+			std::cout << "Id Value: " << std::dec << e_id->get_int() << std::endl;
 		}
-		std::cout << std::endl;
-
-		std::cout << "Id Value: " << std::dec << e_id->get_int() << std::endl;
 		
+		// Get SIZE VINT
 
 		e_size = new simple_vint();
 		e_size->width = 1;
 		mask = 0x80;
 
-		std::bitset<8> dbits(buffer[i]);
-		std::cout << "Data Size Start: " << dbits << std::endl;
+		if(verbose){
+			std::bitset<8> dbits(buffer[i]);
+			std::cout << "Data Size Start: " << dbits << std::endl;
+		}
 
 		// Find the size of the element data.
 		while(!(buffer[i] & mask)){
 			mask >>= 1;
 			e_size->width += 1;
 		}
-		std::cout << "Data Size Vint Width: " << (int)e_size->width << std::endl;
+		if(verbose)
+			std::cout << "Data Size Vint Width: " << (int)e_size->width << std::endl;
 
 		buffer[i] ^= mask;
 
-		std::cout << "Data Size Vint Bytes: ";
+		if(verbose)
+			std::cout << "Data Size Vint Bytes: ";
 		for(int j = 0; j < e_size->width; ++j){
 			e_size->data[j] = buffer[i + j];
-			std::bitset<8> bits(e_size->data[j]);
-			std::cout << bits;
+			if(verbose){
+				std::bitset<8> bits(e_size->data[j]);
+				std::cout << bits;
+			}
 		}
 		i += e_size->width;
-		std::cout << std::endl;
+		if(verbose){
+			std::cout << std::endl;
+			std::cout << "Data Size: " << std::dec << e_size->get_int() << std::endl;
+		}
 
-		std::cout << "Data Size: " << std::dec << e_size->get_int() << std::endl;
+		// SPEC LOOKUP AND PRINT
 
-		// 0x1a45dfa3
-		if(e_id->get_int() == 440786851){
-			std::cout << "-----------------------------\n";
-			std::cout << "\tEBML HEADER\n";
-			std::cout << "-----------------------------\n";
-		// 0x18538067
-		}else if(e_id->get_int() == 408125543){
-			std::cout << "-----------------------------\n";
-			std::cout << "\tSEGMENT\n";
-			std::cout << "-----------------------------\n";
-		// 0x114d9b74
-		}else if(e_id->get_int() == 290298740){
-			std::cout << "-----------------------------\n";
-			std::cout << "\tSEEK INFO\n";
-			std::cout << "-----------------------------\n";
-		// 0x4dbb
-		}else if(e_id->get_int() == 19899){
-                        std::cout << "-----------------------------\n";
-                        std::cout << "\tSEEK\n";
-                        std::cout << "-----------------------------\n";
-		// 0xec
-                }else if(e_id->get_int() == 236){
-                        std::cout << "-----------------------------\n";
-                        std::cout << "\tVOID\n";
-                        std::cout << "-----------------------------\n";
-			i += e_size->get_int();
-		// 0x1549a966
-                }else if(e_id->get_int() == 357149030){
-                        std::cout << "-----------------------------\n";
-                        std::cout << "\tSEGMENT INFO\n";
-                        std::cout << "-----------------------------\n";
-		// 0x1654ae6b
-                }else if(e_id->get_int() == 374648427){
-                        std::cout << "-----------------------------\n";
-                        std::cout << "\tTRACKS\n";
-                        std::cout << "-----------------------------\n";
-		// 0xae
-                }else if(e_id->get_int() == 174){
-                        std::cout << "-----------------------------\n";
-                        std::cout << "\tTRACK ENTRY\n";
-                        std::cout << "-----------------------------\n";
-		// 0xe0
-                }else if(e_id->get_int() == 224){
-                        std::cout << "-----------------------------\n";
-                        std::cout << "\tTRACK VIDEO\n";
-                        std::cout << "-----------------------------\n";
-                // Other
-                }else{
-			std::cout << "Data (bytes): " << std::endl;
-			std::cout << "-----------------------------\n";
-			for(int j = 0, size = e_size->get_int(); j < size; ++j){
-				std::cout << "Byte: " << (int)buffer[i + j] << std::endl;
+		ebml_element* e = get_element(
+			{{e_id->data[0], e_id->data[1], e_id->data[2], e_id->data[3]}},
+			e_id->width);
+
+		if(e != 0){
+			if(verbose)
+				std::cout << "-----------------------------";
+			if(e->type == MASTER){
+				std::cout << std::endl << e->name;
+			}else if(e->type == STRING || e->type == UTF8){
+				std::cout << std::endl << e->name << ": ";
+				for(int j = 0, size = e_size->get_int(); j < size; ++j){
+					std::cout << buffer[i + j];
+				}
+				i += e_size->get_int();
+			}else{
+				std::cout << std::endl << e->name << ": ";
+				for(int j = 0, size = e_size->get_int(); j < size; ++j){
+					std::cout << std::hex << (int)buffer[i + j];
+				}
+				i += e_size->get_int();
 			}
-			i += e_size->get_int();
-			std::cout << "-----------------------------\n";
+			if(verbose)
+				std::cout << "\n-----------------------------\n";
 		}
 
 		delete e_id;
