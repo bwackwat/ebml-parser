@@ -61,7 +61,7 @@ int main(int argc, char** argv){
 	}
 
 	for(int i = 0; i < len;){
-		if(total_bytes + i >= to_bytes){
+		if(to_bytes > 0 && total_bytes + i >= to_bytes){
 			break;
 		}
 
@@ -103,10 +103,14 @@ int main(int argc, char** argv){
 		std::cout << std::endl;
 
 		std::cout << "Id Value: " << std::dec << e_id->get_int() << std::endl;
+		
 
 		e_size = new simple_vint();
 		e_size->width = 1;
 		mask = 0x80;
+
+		std::bitset<8> dbits(buffer[i]);
+		std::cout << "Data Size Start: " << dbits << std::endl;
 
 		// Find the size of the element data.
 		while(!(buffer[i] & mask)){
@@ -128,10 +132,65 @@ int main(int argc, char** argv){
 
 		std::cout << "Data Size: " << std::dec << e_size->get_int() << std::endl;
 
+		// 0x1a45dfa3
+		if(e_id->get_int() == 440786851){
+			std::cout << "-----------------------------\n";
+			std::cout << "\tEBML HEADER\n";
+			std::cout << "-----------------------------\n";
+		// 0x18538067
+		}else if(e_id->get_int() == 408125543){
+			std::cout << "-----------------------------\n";
+			std::cout << "\tSEGMENT\n";
+			std::cout << "-----------------------------\n";
+		// 0x114d9b74
+		}else if(e_id->get_int() == 290298740){
+			std::cout << "-----------------------------\n";
+			std::cout << "\tSEEK INFO\n";
+			std::cout << "-----------------------------\n";
+		// 0x4dbb
+		}else if(e_id->get_int() == 19899){
+                        std::cout << "-----------------------------\n";
+                        std::cout << "\tSEEK\n";
+                        std::cout << "-----------------------------\n";
+		// 0xec
+                }else if(e_id->get_int() == 236){
+                        std::cout << "-----------------------------\n";
+                        std::cout << "\tVOID\n";
+                        std::cout << "-----------------------------\n";
+			i += e_size->get_int();
+		// 0x1549a966
+                }else if(e_id->get_int() == 357149030){
+                        std::cout << "-----------------------------\n";
+                        std::cout << "\tSEGMENT INFO\n";
+                        std::cout << "-----------------------------\n";
+		// 0x1654ae6b
+                }else if(e_id->get_int() == 374648427){
+                        std::cout << "-----------------------------\n";
+                        std::cout << "\tTRACKS\n";
+                        std::cout << "-----------------------------\n";
+		// 0xae
+                }else if(e_id->get_int() == 174){
+                        std::cout << "-----------------------------\n";
+                        std::cout << "\tTRACK ENTRY\n";
+                        std::cout << "-----------------------------\n";
+		// 0xe0
+                }else if(e_id->get_int() == 224){
+                        std::cout << "-----------------------------\n";
+                        std::cout << "\tTRACK VIDEO\n";
+                        std::cout << "-----------------------------\n";
+                // Other
+                }else{
+			std::cout << "Data (bytes): " << std::endl;
+			std::cout << "-----------------------------\n";
+			for(int j = 0, size = e_size->get_int(); j < size; ++j){
+				std::cout << "Byte: " << (int)buffer[i + j] << std::endl;
+			}
+			i += e_size->get_int();
+			std::cout << "-----------------------------\n";
+		}
+
 		delete e_id;
 		delete e_size;
-
-		std::cout << std::endl;
 	}
 
 	total_bytes += len;
