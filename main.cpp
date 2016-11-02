@@ -42,7 +42,8 @@ int main(int argc, char** argv){
 	int from_bytes = 0;
 	int to_bytes = 0;
 
-	simple_vint* vint; 
+	simple_vint* e_id; 
+	simple_vint* e_size; 
 
 	for(int i = 0; i < argc; i++){
 		if((std::strcmp(argv[i], "-f") == 0) && argc > i){
@@ -59,47 +60,76 @@ int main(int argc, char** argv){
 		return 1;
 	}
 
-	for(int i = 0; i < len; ++i){
+	for(int i = 0; i < len;){
 		if(total_bytes + i >= to_bytes){
 			break;
 		}
 
 		std::bitset<8> sbits(buffer[i]);
-		std::cout << "Start: " << sbits << std::endl;
+		std::cout << "Element Start: " << sbits << std::endl;
 
-		vint = new simple_vint();
-		vint->width = 1;
+		e_id = new simple_vint();
+		e_id->width = 1;
 		mask = 0x80;
 
-		// Find the size of the vint.		
+		// Find the size of the element id.
 		while(!(buffer[i] & mask)){
 			mask >>= 1;
-			vint->width += 1;
+			e_id->width += 1;
 		}
-
-		std::cout << "Width: " << (int)vint->width << std::endl;
+		std::cout << "Id Vint Width: " << (int)e_id->width << std::endl;
 
 		// Get rid of "vint marker"
 		//buffer[i] = 0;
 		//buffer[i] ^= mask;
 
-		vint->data[0] = buffer[i];
-		vint->width = 1;
-		std::cout << "Value: " << std::dec << vint->get_int() << std::endl;
+		//vint->data[0] = buffer[i];
+		//vint->width = 1;
+		//std::cout << "Value: " << std::dec << vint->get_int() << std::endl;
 
-		/*std::cout << "Bytes: ";
-		for(int j = 0; j < vint->width; ++j){
-			vint->data[j] = buffer[i + j];
-			std::bitset<8> bits(vint->data[j]);
+		std::cout << "Id Vint Bytes: ";
+		for(int j = 0; j < e_id->width; ++j){
+			e_id->data[j] = buffer[i + j];
+			std::bitset<8> bits(e_id->data[j]);
 			std::cout << bits;
-			i++;
+		}
+		i += e_id->width;
+		std::cout << std::endl;
+
+		std::cout << "Id Hex: 0x";
+		for(int j = 0; j < e_id->width; ++j){
+			std::cout << std::hex << (int)e_id->data[j];
 		}
 		std::cout << std::endl;
 
-		std::cout << "Value: " << std::dec << vint->get_int() << std::endl;*/
-		std::cout << std::hex << vint->get_int() << std::endl;
+		std::cout << "Id Value: " << std::dec << e_id->get_int() << std::endl;
 
-		delete vint;
+		e_size = new simple_vint();
+		e_size->width = 1;
+		mask = 0x80;
+
+		// Find the size of the element data.
+		while(!(buffer[i] & mask)){
+			mask >>= 1;
+			e_size->width += 1;
+		}
+		std::cout << "Data Size Vint Width: " << (int)e_size->width << std::endl;
+
+		buffer[i] ^= mask;
+
+		std::cout << "Data Size Vint Bytes: ";
+		for(int j = 0; j < e_size->width; ++j){
+			e_size->data[j] = buffer[i + j];
+			std::bitset<8> bits(e_size->data[j]);
+			std::cout << bits;
+		}
+		i += e_size->width;
+		std::cout << std::endl;
+
+		std::cout << "Data Size: " << std::dec << e_size->get_int() << std::endl;
+
+		delete e_id;
+		delete e_size;
 
 		std::cout << std::endl;
 	}
