@@ -71,17 +71,7 @@ ebml_element* get_element(std::array<uint8_t, 4> id, uint8_t level){
 }
 
 bool verbose = false;
-
 typedef std::ostream& (*manip) (std::ostream&);
-class basic_log{};
-template <class T> basic_log& operator<< (basic_log& l, const T& x){
-	std::cout << x;
-	return l;
-}
-basic_log& operator<< (basic_log& l, manip manipulator){
-	std::cout << manipulator;
-	return l;
-}
 class verbose_log{};
 template <class T> verbose_log& operator<< (verbose_log& l, const T& x){
 	if(verbose)
@@ -93,7 +83,6 @@ verbose_log& operator<< (verbose_log& l, manip manipulator){
 		std::cout << manipulator;
 	return l;
 }
-basic_log log;
 verbose_log vlog;
 
 int main(int argc, char** argv){
@@ -247,153 +236,5 @@ int main(int argc, char** argv){
 		vlog << "--------------------------------------------------------" << std::endl;
 	}
 
-
-/*
-	if((len = read(STDIN_FILENO, buffer, BUFSIZE)) == -1){
-		std::cout << "Uh oh, read error!\n";
-		return 1;
-	}
-
-	for(int i = 0; i < len;){
-		if(to_bytes > 0 && total_bytes + i >= to_bytes){
-			break;
-		}
-
-		if(verbose){
-			std::bitset<8> sbits(buffer[i]);
-			std::cout << "Element Start: " << sbits << std::endl;
-			std::cout << "Element Pos: " << std::dec << i << std::endl;
-		}
-
-		// Get ID VINT
-
-		e_id = new simple_vint();
-		e_id->width = 1;
-		mask = 0x80;
-
-		// Find the size of the element id.
-		while(!(buffer[i] & mask)){
-			mask >>= 1;
-			e_id->width += 1;
-		}
-		if(verbose){
-			std::cout << "Id Vint Width: " << (int)e_id->width << std::endl;
-			std::cout << "Id Vint Bytes: ";
-		}
-		for(int j = 0; j < e_id->width; ++j){
-			e_id->data[j] = buffer[i + j];
-			if(verbose){
-				std::bitset<8> bits(e_id->data[j]);
-				std::cout << bits;
-			}
-		}
-		i += e_id->width;
-		if(verbose){
-			std::cout << std::endl;
-			std::cout << "Id Hex: 0x";
-			for(int j = 0; j < e_id->width; ++j){
-				std::cout << std::hex << (int)e_id->data[j];
-			}
-			std::cout << std::endl;
-			std::cout << "Id Value: " << std::dec << e_id->get_uint() << std::endl;
-		}
-		
-		// Get SIZE VINT
-
-		e_size = new simple_vint();
-		e_size->width = 1;
-		mask = 0x80;
-
-		if(verbose){
-			std::bitset<8> dbits(buffer[i]);
-			std::cout << "Data Size Start: " << dbits << std::endl;
-		}
-
-		// Find the size of the element data.
-		while(!(buffer[i] & mask)){
-			mask >>= 1;
-			e_size->width += 1;
-		}
-		if(verbose)
-			std::cout << "Data Size Vint Width: " << (int)e_size->width << std::endl;
-
-		buffer[i] ^= mask;
-
-		if(verbose)
-			std::cout << "Data Size Vint Bytes: ";
-		for(int j = 0; j < e_size->width; ++j){
-			e_size->data[j] = buffer[i + j];
-			if(verbose){
-				std::bitset<8> bits(e_size->data[j]);
-				std::cout << bits;
-			}
-		}
-		i += e_size->width;
-		if(verbose){
-			std::cout << std::endl;
-			std::cout << "Data Size: " << std::dec << e_size->get_uint() << std::endl;
-		}
-
-		// SPEC LOOKUP AND GET DATA
-
-		ebml_element* e = get_element(
-			{{e_id->data[0], e_id->data[1], e_id->data[2], e_id->data[3]}},
-			e_id->width);
-
-		if(e != 0){
-			if(verbose)
-				std::cout << "-----------------------------";
-			if(e->type == MASTER){
-				std::cout << std::endl << '*' << e->name;
-			}else if(e->type == STRING || e->type == UTF8){
-				std::cout << std::endl << e->name << ": ";
-				for(int j = 0, size = e_size->get_uint(); j < size; ++j){
-					std::cout << buffer[i + j];
-				}
-				i += e_size->get_uint();
-			}else if(e->type == BINARY){
-				std::cout << std::endl << e->name << ": ";
-				for(int j = 0, size = e_size->get_uint(); j < 32 && j < size; ++j){
-					std::cout << std::hex << (int)buffer[i + j];
-				}
-				std::cout << "...";
-				i += e_size->get_uint();
-			}else if(e->type == UINT){
-				e_data = new simple_vint();
-				e_data->width = 0;
-				for(int j = 0, size = e_size->get_uint(); j < size; ++j){
-					e_data->data[j] = buffer[i + j];
-					e_data->width += 1;
-				}
-				std::cout << std::endl << e->name << ": " << std::dec << e_data->get_uint();
-				delete e_data;
-				i += e_size->get_uint();
-			}else if(e->type == INT){
-				e_data = new simple_vint();
-				e_data->width = 0;
-				for(int j = 0, size = e_size->get_uint(); j < size; ++j){
-					e_data->data[j] = buffer[i + j];
-					e_data->width += 1;
-				}
-				std::cout << std::endl << e->name << ": " << std::dec << e_data->get_int();
-				delete e_data;
-				i += e_size->get_uint();
-			}else{
-				std::cout << std::endl << e->name << ": ";
-				for(int j = 0, size = e_size->get_uint(); j < size; ++j){
-					std::cout << std::hex << (int)buffer[i + j];
-				}
-				i += e_size->get_uint();
-			}
-			if(verbose)
-				std::cout << "\n-----------------------------\n";
-		}
-
-		delete e_id;
-		delete e_size;
-	}
-
-	total_bytes += len;
-*/
 	return 0;
 }
