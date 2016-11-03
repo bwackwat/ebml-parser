@@ -4,18 +4,15 @@ This is a simple EBML parser.
 
 ## Features
 
-* Currently reads up to 1MB of STDIN.
 * Supports all EBML elements as listed in https://www.matroska.org/technical/specs/index.html
 * Does not validate mandatory elements, multiple elements, ranges, or WebM elements.
 
 ### Command Line
 
 * ```-v``` for verbose output.
-* ```-t <int>``` to end after <int> bytes.
 
 ## TODO
 
-* Read EBML elements separately in a stream as opposed to a 1MB batch.
 * Parse SimpleBlock frames and timecodes.
 * DATE, and FLOAT type parsing.
 
