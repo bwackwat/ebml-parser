@@ -7,7 +7,7 @@
 
 #include <unistd.h>
 
-#define BUFSIZE 1000000 //1mb
+#define BUFSIZE 1000000 // 1MB
 
 enum ebml_element_type {
 	MASTER,
@@ -25,13 +25,17 @@ public:
 	uint8_t width;
 	uint8_t data[8];
 
-	uint64_t get_int(){
+	uint64_t get_uint(){
 		uint64_t value = 0;
 		value = data[width - 1];
 		for(int i  = width - 1; i > 0; --i){
-			value += ((uint32_t)data[i - 1] << ((width - i) * 8));
+			value += ((uint64_t)data[i - 1] << ((width - i) * 8));
 		}
 		return value;
+	}
+
+	int64_t get_int(){
+		return static_cast<int64_t>(this->get_uint());
 	}
 };
 
@@ -66,13 +70,6 @@ ebml_element* get_element(std::array<uint8_t, 4> id, uint8_t level){
 	return 0;
 }
 
-class simple_ebml_element {
-public:
-	simple_vint id;
-	simple_vint size;
-	uint8_t* data;
-};
-
 int main(int argc, char** argv){
 	int len, mask;
 	uint8_t buffer[BUFSIZE];
@@ -83,8 +80,9 @@ int main(int argc, char** argv){
 
 	bool verbose = false;
 
-	simple_vint* e_id; 
-	simple_vint* e_size; 
+	simple_vint* e_id;
+	simple_vint* e_size;
+	simple_vint* e_data;
 
 	for(int i = 0; i < argc; i++){
 		if((std::strcmp(argv[i], "-f") == 0) && argc > i){
@@ -144,7 +142,7 @@ int main(int argc, char** argv){
 				std::cout << std::hex << (int)e_id->data[j];
 			}
 			std::cout << std::endl;
-			std::cout << "Id Value: " << std::dec << e_id->get_int() << std::endl;
+			std::cout << "Id Value: " << std::dec << e_id->get_uint() << std::endl;
 		}
 		
 		// Get SIZE VINT
@@ -180,10 +178,10 @@ int main(int argc, char** argv){
 		i += e_size->width;
 		if(verbose){
 			std::cout << std::endl;
-			std::cout << "Data Size: " << std::dec << e_size->get_int() << std::endl;
+			std::cout << "Data Size: " << std::dec << e_size->get_uint() << std::endl;
 		}
 
-		// SPEC LOOKUP AND PRINT
+		// SPEC LOOKUP AND GET DATA
 
 		ebml_element* e = get_element(
 			{{e_id->data[0], e_id->data[1], e_id->data[2], e_id->data[3]}},
@@ -193,19 +191,46 @@ int main(int argc, char** argv){
 			if(verbose)
 				std::cout << "-----------------------------";
 			if(e->type == MASTER){
-				std::cout << std::endl << e->name;
+				std::cout << std::endl << '*' << e->name;
 			}else if(e->type == STRING || e->type == UTF8){
 				std::cout << std::endl << e->name << ": ";
-				for(int j = 0, size = e_size->get_int(); j < size; ++j){
+				for(int j = 0, size = e_size->get_uint(); j < size; ++j){
 					std::cout << buffer[i + j];
 				}
-				i += e_size->get_int();
-			}else{
+				i += e_size->get_uint();
+			}else if(e->type == BINARY){
 				std::cout << std::endl << e->name << ": ";
-				for(int j = 0, size = e_size->get_int(); j < size; ++j){
+				for(int j = 0, size = e_size->get_uint(); j < 32 && j < size; ++j){
 					std::cout << std::hex << (int)buffer[i + j];
 				}
-				i += e_size->get_int();
+				std::cout << "...";
+				i += e_size->get_uint();
+			}else if(e->type == UINT){
+				e_data = new simple_vint();
+				e_data->width = 0;
+				for(int j = 0, size = e_size->get_uint(); j < size; ++j){
+					e_data->data[j] = buffer[i + j];
+					e_data->width += 1;
+				}
+				std::cout << std::endl << e->name << ": " << std::dec << e_data->get_uint();
+				delete e_data;
+				i += e_size->get_uint();
+			}else if(e->type == INT){
+				e_data = new simple_vint();
+				e_data->width = 0;
+				for(int j = 0, size = e_size->get_uint(); j < size; ++j){
+					e_data->data[j] = buffer[i + j];
+					e_data->width += 1;
+				}
+				std::cout << std::endl << e->name << ": " << std::dec << e_data->get_int();
+				delete e_data;
+				i += e_size->get_uint();
+			}else{
+				std::cout << std::endl << e->name << ": ";
+				for(int j = 0, size = e_size->get_uint(); j < size; ++j){
+					std::cout << std::hex << (int)buffer[i + j];
+				}
+				i += e_size->get_uint();
 			}
 			if(verbose)
 				std::cout << "\n-----------------------------\n";
