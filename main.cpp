@@ -204,6 +204,22 @@ int main(int argc, char** argv){
 						}
 						std::cout << std::hex << (int)buffer[i];
 					}
+					if(e->name == "SimpleBlock" || e->name == "Block"){
+						simple_vint track_number;
+						track_number.width = 1;
+						mask = 0x80;
+						while(!(buffer[0] & mask)){
+							mask >>= 1;
+							track_number.width++;
+						}
+						buffer[0] ^= mask;
+						for(int i = 0; i < track_number.width; ++i){
+							track_number.data[i] = buffer[i];
+						}
+						std::cout << std::endl << "Track Number: " << std::dec << (int)track_number.get_uint();
+						int16_t timecode = (int16_t)(((uint16_t)buffer[track_number.width] << 8) | buffer[track_number.width + 1]);
+						std::cout << std::endl << "Timecode: " << std::dec << (int)timecode;
+					}
 				}else if(e->type == UINT){
 					simple_vint data;
 					data.width = 0;
