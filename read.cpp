@@ -30,6 +30,8 @@ int main(int argc, char** argv){
 		return 1;
 	}
 
+	std::cout << "Read " << len << " bytes." << std::endl;
+
 	for(int i = 0; i < len; ++i){
 		if(to_bytes > 0 && total_bytes + i >= to_bytes){
 			break;

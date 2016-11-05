@@ -7,7 +7,7 @@
 
 #include <unistd.h>
 
-#define BUFSIZE 8192 // 8KB
+#define BUFSIZE 1048576 // 1MB
 
 enum ebml_element_type {
 	MASTER,
@@ -32,10 +32,6 @@ public:
 			value += ((uint64_t)data[i - 1] << ((width - i) * 8));
 		}
 		return value;
-	}
-
-	int64_t get_int(){
-		return static_cast<int64_t>(this->get_uint());
 	}
 };
 
@@ -86,7 +82,7 @@ verbose_log& operator<< (verbose_log& l, manip manipulator){
 verbose_log vlog;
 
 int main(int argc, char** argv){
-	int len, mask;
+	int len, mask, elems = 0;
 	uint8_t buffer[BUFSIZE];
 	std::bitset<8> bits;
 
@@ -104,6 +100,11 @@ int main(int argc, char** argv){
 		}else if(len == 0){
 			vlog << "DONE!" << std::endl;
 			break;
+		}
+
+		if(buffer[0] == 0){
+			std::cout << "Read '0' byte..." << std::endl;
+			continue;
 		}
 
 		bits = std::bitset<8>(buffer[0]);
@@ -187,7 +188,8 @@ int main(int argc, char** argv){
 				// Get EBML Element Data, parse it.
 				uint64_t data_len = size.get_uint();
 				if((len = read(STDIN_FILENO, buffer, data_len) != data_len)){
-					std::cout << "Uh oh, could not read all the data!\n";
+					std::cout << "Uh oh, could not read all the data!" << std::endl;
+					std::cout << "Wanted " << data_len << " found " << len << std::endl;
 					break;
 				}
 				std::cout << e->name << ": ";
@@ -205,6 +207,8 @@ int main(int argc, char** argv){
 						std::cout << std::hex << (int)buffer[i];
 					}
 					if(e->name == "SimpleBlock" || e->name == "Block"){
+						bits = std::bitset<8>(buffer[0]);
+						vlog << std::endl << "Block First Byte: " << bits;
 						simple_vint track_number;
 						track_number.width = 1;
 						mask = 0x80;
@@ -213,7 +217,10 @@ int main(int argc, char** argv){
 							track_number.width++;
 						}
 						buffer[0] ^= mask;
+						vlog << std::endl << "Block Track Number Bytes: ";
 						for(int i = 0; i < track_number.width; ++i){
+							bits = std::bitset<8>(buffer[i]);
+							vlog << bits << ' ';
 							track_number.data[i] = buffer[i];
 						}
 						std::cout << std::endl << "Track Number: " << std::dec << (int)track_number.get_uint();
@@ -228,14 +235,14 @@ int main(int argc, char** argv){
 						data.width++;
 					}
 					std::cout << std::dec << data.get_uint();
-				}else if(e->type == INT){
+				}else if(e->type == INT || e->type == DATE || e->type == FLOAT){
 					simple_vint data;
 					data.width = 0;
 					for(int i = 0; i < data_len; ++i){
 						data.data[i] = buffer[i];
 						data.width++;
 					}
-					std::cout << std::dec << data.get_int();
+					std::cout << std::dec << static_cast<int64_t>(data.get_uint());
 				}else{
 					for(int i = 0; i < data_len; ++i){
 						std::cout << std::hex << (int)buffer[i];
@@ -247,9 +254,13 @@ int main(int argc, char** argv){
 				std::cout << " - " << e->name << std::endl;
 			}
 		}else{
-			std::cout << "UNKNOWN ELEMENT: ";
+			std::cout << "UNKNOWN ELEMENT!" << std::endl;
 		}
 		vlog << "--------------------------------------------------------" << std::endl;
+		elems++;
+		if(elems > 30){
+			//break;
+		}
 	}
 
 	return 0;

@@ -6,15 +6,17 @@ This is a simple EBML parser.
 
 * Supports all EBML elements as listed in https://www.matroska.org/technical/specs/index.html
 * Does not validate mandatory elements, multiple elements, ranges, or WebM elements.
+* Parses incrementally as EBML elements are found.
 
 ### Command Line
 
-* ```-v``` for verbose output.
+* ```-v``` for verbose (bitwise) output.
 
 ## TODO
 
-* Parse Block and Block lacing.
+* Parse Block lacing bits.
 * DATE, and FLOAT type parsing.
+* I think 1KB read batches is more efficient. Looking into it.
 
 ## Suggested Use / Extras
 
