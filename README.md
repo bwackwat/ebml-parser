@@ -1,8 +1,8 @@
 # ebml-parser
 
 This is a simple EBML parser.
-```./build.sh```
-```./ebml-parser -v < test.webm | less```
+```[bash]# ./build.sh
+[bash]# ./ebml-parser -v < test.webm | less```
 
 ## Features
 
