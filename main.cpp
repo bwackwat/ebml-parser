@@ -29,6 +29,15 @@ public:
 	uint8_t width;
 	uint8_t data[8];
 
+	bool is_all_ones(){
+		for(int i = 1; i < width - 1; i++){
+			if(data[i] != 255){
+				return false;
+			}
+		}
+		return true;
+	}
+
 	uint64_t get_uint(){
 		uint64_t value = 0;
 		value = data[width - 1];
@@ -315,7 +324,13 @@ void parse(int fd){
 				}
 			}else{
 				// Master data is actually just more elements, continue.
-				std::cout << '(' << std::dec << pos << ')' << " ----- " << e->name << std::endl;
+				std::cout << '(' << std::dec << pos << ')' << " ----- " << e->name << " [";
+				if(size.is_all_ones()){
+					std::cout << "unknown";
+				}else{
+					std::cout << size.get_uint();
+				}
+				std::cout << ']' << std::endl;
 			}
 		}else{
 			std::cout << "UNKNOWN ELEMENT!" << std::endl;
