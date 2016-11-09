@@ -1,6 +1,8 @@
 # ebml-parser
 
 This is a simple EBML parser.
+```./build.sh```
+```./ebml-parser -v < test.webm | less```
 
 ## Features
 
@@ -15,8 +17,7 @@ This is a simple EBML parser.
 ## TODO
 
 * Parse Block lacing bits.
-* DATE, and FLOAT type parsing.
-* I think 1KB read batches is more efficient. Looking into it.
+* Reading 1KB batches is likely more efficient; a research topic.
 
 ## Suggested Use / Extras
 
