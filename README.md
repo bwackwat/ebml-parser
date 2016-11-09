@@ -3,7 +3,7 @@
 This is a simple, yet complete EBML parser.
 ```
 [/bin/bash]# ./build.sh
-[/bin/bash]# ./ebml-parser -v < test.webm | less
+[/bin/bash]# ./ebml-parser < test.webm | less
 ```
 
 ## Features
