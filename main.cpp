@@ -304,9 +304,9 @@ void parse(int fd){
 					// nanoseconds to millenium (Jan 1 2001)
 					// nanoseconds to date file was created.
 					std::time_t date_val = std::chrono::system_clock::to_time_t(std::chrono::system_clock::time_point::time_point() + std::chrono::nanoseconds(978307200000000000) + std::chrono::nanoseconds(int64_t(data.get_uint())));
-					// This is the local time; PST in San Francisco, -7 or something.)
+					// This is the local time; PST in San Francisco, -7h or something.)
 					//std::cout << std::ctime(&date_val);
-					// This is the UTC time. Whatever.
+					// This is the UTC time.
 					std::cout << asctime(gmtime(&date_val));
 				}else if(e->type == INT){
 					simple_vint data;
@@ -326,7 +326,7 @@ void parse(int fd){
 				// Master data is actually just more elements, continue.
 				std::cout << '(' << std::dec << pos << ')' << " ----- " << e->name << " [";
 				if(size.is_all_ones()){
-					std::cout << "unknown";
+					std::cout << "Unknown";
 				}else{
 					std::cout << size.get_uint();
 				}
